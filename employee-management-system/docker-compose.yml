@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ems-postgres
+    environment:
+      POSTGRES_DB: emsdb
+      POSTGRES_USER: ems_user
+      POSTGRES_PASSWORD: ems_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - ems_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ems_user -d emsdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ems_network
+
+  app:
+    build: .
+    container_name: ems-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: emsdb
+      DB_USERNAME: ems_user
+      DB_PASSWORD: ems_password
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    networks:
+      - ems_network
+
+volumes:
+  ems_pgdata:
+
+networks:
+  ems_network:
+    driver: bridge
